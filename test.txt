@@ -31,6 +31,12 @@ void reader(void* args){
                 (*(cpu_stat_array + i)).core_number = (char *) malloc(10 * sizeof(char));
             }
             char* numbers = (char *) malloc(200 * sizeof(char));
+//            eerro = fscanf(fp, "%s %ld %ld %ld %ld %ld %ld %ld\n", (*(cpu_stat_array + i)).core_number,
+//                           &((*(cpu_stat_array + i)).t_user),
+//                           &((*(cpu_stat_array + i)).t_nice), &((*(cpu_stat_array + i)).t_system),
+//                           &((*(cpu_stat_array + i)).t_idle),
+//                           &((*(cpu_stat_array + i)).t_iowait), &((*(cpu_stat_array + i)).t_irq),
+//                           &((*(cpu_stat_array + i)).t_softirq));
             eerro = fscanf(fp, "%s %s\n", (*(cpu_stat_array + i )).core_number, numbers);
             printf("%s %s\n", (*(cpu_stat_array + i)).core_number, numbers);
             if(eerro != 2) {
@@ -47,6 +53,12 @@ void reader(void* args){
             ((*(cpu_stat_array + i )).t_iowait) = strtol(ptr,&ptr , 10);
             ((*(cpu_stat_array + i )).t_irq) = strtol(ptr,&ptr , 10);
             ((*(cpu_stat_array + i )).t_softirq) = strtol(ptr,&ptr , 10);
+//            if(eerro != 8) {
+//                data->logger_data->message = (char *) malloc(100 * sizeof(char));
+//                data->logger_data->message = "file read error";
+//                data->logger_data->flag = 1;
+//                return;
+//            }
             test = fgetc(fp);
             while (test != '\n') {
                 test = fgetc(fp);
@@ -74,6 +86,12 @@ void reader(void* args){
                 (*(cpu_stat_array + i + offset)).core_number = (char *) malloc(10 * sizeof(char));
             }
             char* numbers = (char *) malloc(200 * sizeof(char));
+//            eerro = fscanf(fp2, "%s %ld %ld %ld %ld %ld %ld %ld\n", (*(cpu_stat_array + i + offset)).core_number,
+//                           &((*(cpu_stat_array + i + offset)).t_user),
+//                           &((*(cpu_stat_array + i + offset)).t_nice), &((*(cpu_stat_array + i + offset)).t_system),
+//                           &((*(cpu_stat_array + i + offset)).t_idle),
+//                           &((*(cpu_stat_array + i + offset)).t_iowait), &((*(cpu_stat_array + i + offset)).t_irq),
+//                           &((*(cpu_stat_array + i + offset)).t_softirq));
             eerro = fscanf(fp2, "%s %s\n", (*(cpu_stat_array + i + offset)).core_number, numbers);
             if(eerro != 2) {
                 data->logger_data->message = (char *) malloc(100 * sizeof(char));
@@ -90,6 +108,15 @@ void reader(void* args){
             ((*(cpu_stat_array + i + offset)).t_irq) = strtol(ptr,&ptr , 10);
             ((*(cpu_stat_array + i + offset)).t_softirq) = strtol(ptr,&ptr , 10);
 
+
+//            if(eerro != 8) {
+//                //send error to logger
+//
+//                data->logger_data->message = (char *) malloc(100 * sizeof(char));
+//                data->logger_data->message = "file read error";
+//                data->logger_data->flag = 1;
+//                return;
+//            }
             test = fgetc(fp);
             while (test != '\n') {
                 test = fgetc(fp);
@@ -103,11 +130,42 @@ void reader(void* args){
 
 //analyzer
 void analyzer(void* args){
+    struct data* data = (struct data*)args;
+    data->cpu_usage = (double *) malloc(data->number_of_procs * sizeof(double));
+    if(data->cpu_usage == NULL) {
+        data->logger_data->message = (char *) malloc(100 * sizeof(char));
+        data->logger_data->message = "malloc error";
+        data->logger_data->flag = 1;
+        return;
+    }
 
+    while(data->exit) {
+        while (data->test_flag != 1) {
+            sleep(1);
+        }
+        for (int i = 0; i < data->number_of_procs; i++) {
+            data->cpu_usage[i] = calculate_load(data->stats_array + i, data->stats_array + i + data->number_of_procs);
+        }
+        data->test_flag = 2;
+    }
 }
 
 //printer
 void printer(void* args){
+    //print data->data_processed
+    struct data* data = (struct data*)args;
+    while(data->exit) {
+        while (data->test_flag != 2) {
+            sleep(1);
+        }
+        for (int i = 0; i < data->number_of_procs; i++) {
+            printf("%s - %f\n", data->stats_array[i].core_number, data->cpu_usage[i]);
+        }
+        data->logger_data->message = (char *) malloc(100 * sizeof(char));
+        data->logger_data->message = "printing";
+        data->logger_data->flag = 1;
+        data->test_flag = 0;
+    }
 
 }
 
@@ -118,10 +176,43 @@ void watchdog(){
 }
 
 void logger(void *args){
+    struct data* data = (struct data*)args;
+    FILE *fp = fopen(data->logger_data->path, "a");
+    while(data->exit) {
+        while(data->logger_data->flag != 1) {
+            sleep(1);
+        }
+        if (fp == NULL) {
+            printf("file open error for logger\n");
+            return;
+        }
+        //log message from logger_data
+        fprintf(fp, "%s\n", data->logger_data->message);
+        //free(data->logger_data->message);
+        data->logger_data->flag = 0;
+    }
+    fclose(fp);
 
 }
 
+double calculate_load(struct cpustat *prev, struct cpustat *cur)
+{
+    unsigned long idle_prev = (prev->t_idle) + (prev->t_iowait);
+    unsigned long idle_cur = (cur->t_idle) + (cur->t_iowait);
 
+    unsigned long nidle_prev = (prev->t_user) + (prev->t_nice) + (prev->t_system) + (prev->t_irq) + (prev->t_softirq);
+    unsigned long nidle_cur = (cur->t_user) + (cur->t_nice) + (cur->t_system) + (cur->t_irq) + (cur->t_softirq);
+
+    unsigned long total_prev = idle_prev + nidle_prev;
+    unsigned long total_cur = idle_cur + nidle_cur;
+
+    double totald = (double) total_cur - (double) total_prev;
+    double idled = (double) idle_cur - (double) idle_prev;
+
+    double cpu_perc = (1000 * (totald - idled) / totald + 1) / 10;
+
+    return cpu_perc;
+}
 
 int initialize(struct data* data){
 
@@ -163,9 +254,6 @@ int initialize(struct data* data){
 }
 
 void clear_data(struct data* data){
-    for (int i = 0; i < data->number_of_procs; i++) {
-        free(data->stats_array[i].core_number);
-    }
     free(data->stats_array->core_number);
     free(data->logger_data->message);
     free(data->stats_array);
