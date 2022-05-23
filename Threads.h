@@ -59,5 +59,6 @@ double calculate_load(struct cpustat *prev, struct cpustat *cur);
 
 int initialize(struct data* data);
 void clear_data(struct data* data);
+int read_data(FILE *fp, struct data* data, int offset );
 
 #endif //PROCESSOR_STAT_THREADS_H

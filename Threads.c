@@ -14,40 +14,17 @@ void reader(void* args){
             data->logger_data->flag = 1;
             return;
         }
-        int i = 0;
-        int eerro;
         int skip = fgetc(fp);
 
         while (skip != '\n') {
             skip = fgetc(fp);
         }
-        int test;
-        do {
-            if((*(cpu_stat_array + i)).core_number == NULL) {
-                (*(cpu_stat_array + i)).core_number = (char *) malloc(10 * sizeof(char));
-            }
-            char* numbers = (char *) malloc(200 * sizeof(char));
-            eerro = fscanf(fp, "%s %s\n", (*(cpu_stat_array + i )).core_number, numbers);
-            printf("%s %s\n", (*(cpu_stat_array + i)).core_number, numbers);
-            if(eerro != 2) {
-                data->logger_data->message = "file read error";
-                data->logger_data->flag = 1;
-                return;
-            }
-            char *ptr;
-            ((*(cpu_stat_array + i )).t_user) = strtol(numbers,&ptr , 10);
-            ((*(cpu_stat_array + i )).t_nice) = strtol(ptr,&ptr , 10);
-            ((*(cpu_stat_array + i )).t_system) = strtol(ptr,&ptr , 10);
-            ((*(cpu_stat_array + i )).t_idle) = strtol(ptr,&ptr , 10);
-            ((*(cpu_stat_array + i )).t_iowait) = strtol(ptr,&ptr , 10);
-            ((*(cpu_stat_array + i )).t_irq) = strtol(ptr,&ptr , 10);
-            ((*(cpu_stat_array + i )).t_softirq) = strtol(ptr,&ptr , 10);
-            test = fgetc(fp);
-            while (test != '\n') {
-                test = fgetc(fp);
-            }
-            i++;
-        } while (i < data->number_of_procs);
+        if(read_data(fp,data,0)!=0){
+            data->logger_data->message = "read error";
+            data->logger_data->flag = 1;
+            return;
+        }
+
         sleep(2);
         fclose(fp);
 
@@ -57,38 +34,19 @@ void reader(void* args){
             data->logger_data->flag = 1;
             return;
         }
-        int skip2 = fgetc(fp);
+        int skip2 = fgetc(fp2);
         while (skip2 != '\n') {
-            skip2 = fgetc(fp);
+            skip2 = fgetc(fp2);
         }
-        int offset = i;
-        i = 0;
-        do {
-            if((*(cpu_stat_array + i+ offset)).core_number == NULL) {
-                (*(cpu_stat_array + i + offset)).core_number = (char *) malloc(10 * sizeof(char));
-            }
-            char* numbers = (char *) malloc(200 * sizeof(char));
-            eerro = fscanf(fp2, "%s %s\n", (*(cpu_stat_array + i + offset)).core_number, numbers);
-            if(eerro != 2) {
-                data->logger_data->message = "file read error";
-                data->logger_data->flag = 1;
-                return;
-            }
-            char *ptr;
-            ((*(cpu_stat_array + i + offset)).t_user) = strtol(numbers,&ptr , 10);
-            ((*(cpu_stat_array + i + offset)).t_nice) = strtol(ptr,&ptr , 10);
-            ((*(cpu_stat_array + i + offset)).t_system) = strtol(ptr,&ptr , 10);
-            ((*(cpu_stat_array + i + offset)).t_idle) = strtol(ptr,&ptr , 10);
-            ((*(cpu_stat_array + i + offset)).t_iowait) = strtol(ptr,&ptr , 10);
-            ((*(cpu_stat_array + i + offset)).t_irq) = strtol(ptr,&ptr , 10);
-            ((*(cpu_stat_array + i + offset)).t_softirq) = strtol(ptr,&ptr , 10);
 
-            test = fgetc(fp);
-            while (test != '\n') {
-                test = fgetc(fp);
-            }
-            i++;
-        } while (i < data->number_of_procs);
+        if(read_data(fp2,data, data->number_of_procs)!=0){
+            data->logger_data->message = "read error";
+            data->logger_data->flag = 1;
+            return;
+        }
+
+
+
         data->test_flag = 1;
         fclose(fp2);
     }
@@ -187,4 +145,38 @@ void clear_data(struct data* data){
     free(data->logger_data->path);
     free(data->logger_data);
     free(data);
+}
+
+int read_data(FILE *fp, struct data* data, int offset ) {
+    int eerro;
+    int i = 0;
+    int test;
+    struct cpustat *cpu_stat_array = data->stats_array;
+    do {
+        if ((*(cpu_stat_array + i + offset)).core_number == NULL) {
+            (*(cpu_stat_array + i + offset)).core_number = (char *) malloc(10 * sizeof(char));
+        }
+        char *numbers = (char *) malloc(200 * sizeof(char));
+        eerro = fscanf(fp, "%s %s\n", (*(cpu_stat_array + i + offset)).core_number, numbers);
+        if (eerro != 2) {
+            data->logger_data->message = "file read error";
+            data->logger_data->flag = 1;
+            return 1;
+        }
+        char *ptr;
+        ((*(cpu_stat_array + i + offset)).t_user) = strtol(numbers, &ptr, 10);
+        ((*(cpu_stat_array + i + offset)).t_nice) = strtol(ptr, &ptr, 10);
+        ((*(cpu_stat_array + i + offset)).t_system) = strtol(ptr, &ptr, 10);
+        ((*(cpu_stat_array + i + offset)).t_idle) = strtol(ptr, &ptr, 10);
+        ((*(cpu_stat_array + i + offset)).t_iowait) = strtol(ptr, &ptr, 10);
+        ((*(cpu_stat_array + i + offset)).t_irq) = strtol(ptr, &ptr, 10);
+        ((*(cpu_stat_array + i + offset)).t_softirq) = strtol(ptr, &ptr, 10);
+
+        test = fgetc(fp);
+        while (test != '\n') {
+            test = fgetc(fp);
+        }
+        i++;
+    } while (i < data->number_of_procs);
+    return 0;
 }
