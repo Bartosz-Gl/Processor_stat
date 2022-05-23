@@ -8,9 +8,6 @@ void reader(void* args){
     struct data* data = (struct data*) args;
     struct cpustat *cpu_stat_array = data->stats_array;
     while(data->exit) {
-        while (data->test_flag != 0) {
-            sleep(1);
-        }
         FILE *fp = fopen(data->path, "r");
         if (fp == NULL) {
             data->logger_data->message = (char *) malloc(100 * sizeof(char));
