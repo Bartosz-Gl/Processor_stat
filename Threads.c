@@ -10,7 +10,6 @@ void reader(void* args){
     while(data->exit) {
         FILE *fp = fopen(data->path, "r");
         if (fp == NULL) {
-            data->logger_data->message = (char *) malloc(100 * sizeof(char));
             data->logger_data->message = "file open error";
             data->logger_data->flag = 1;
             return;
@@ -31,7 +30,6 @@ void reader(void* args){
             eerro = fscanf(fp, "%s %s\n", (*(cpu_stat_array + i )).core_number, numbers);
             printf("%s %s\n", (*(cpu_stat_array + i)).core_number, numbers);
             if(eerro != 2) {
-                data->logger_data->message = (char *) malloc(100 * sizeof(char));
                 data->logger_data->message = "file read error";
                 data->logger_data->flag = 1;
                 return;
@@ -55,7 +53,6 @@ void reader(void* args){
 
         FILE *fp2 = fopen("/proc/stat", "r");
         if (fp2 == NULL) {
-            data->logger_data->message = (char *) malloc(100 * sizeof(char));
             data->logger_data->message = "file open error";
             data->logger_data->flag = 1;
             return;
@@ -73,7 +70,6 @@ void reader(void* args){
             char* numbers = (char *) malloc(200 * sizeof(char));
             eerro = fscanf(fp2, "%s %s\n", (*(cpu_stat_array + i + offset)).core_number, numbers);
             if(eerro != 2) {
-                data->logger_data->message = (char *) malloc(100 * sizeof(char));
                 data->logger_data->message = "file read error";
                 data->logger_data->flag = 1;
                 return;
@@ -114,7 +110,22 @@ void watchdog(){
 
 }
 
+
 void logger(void *args){
+    struct data* data = (struct data*)args;
+    FILE *fp = fopen(data->logger_data->path, "a");
+    while(data->exit) {
+        while(data->logger_data->flag != 1) {
+            sleep(1);
+        }
+        if (fp == NULL) {
+            printf("file open error for logger\n");
+            return;
+        }
+        fprintf(fp, "%s\n", data->logger_data->message);
+        data->logger_data->flag = 0;
+    }
+    fclose(fp);
 
 }
 
@@ -152,6 +163,11 @@ int initialize(struct data* data){
     data->logger_data->flag = 0;
     data->logger_data->path = (char*)malloc(sizeof(char) * strlen("/home/jojojej/Desktop/log.txt"));
     if(data->logger_data->path == NULL) {
+        printf("malloc error\n");
+        return -1;
+    }
+    data->logger_data->message = (char *) malloc(100 * sizeof(char));
+    if(data->logger_data->message == NULL) {
         printf("malloc error\n");
         return -1;
     }
