@@ -6,7 +6,6 @@
 //reader
 void reader(void* args){
     struct data* data = (struct data*) args;
-    struct cpustat *cpu_stat_array = data->stats_array;
     while(data->exit) {
         FILE *fp = fopen(data->path, "r");
         if (fp == NULL) {
@@ -44,9 +43,6 @@ void reader(void* args){
             data->logger_data->flag = 1;
             return;
         }
-
-
-
         data->test_flag = 1;
         fclose(fp2);
     }
@@ -54,7 +50,24 @@ void reader(void* args){
 
 //analyzer
 void analyzer(void* args){
+    struct data* data = (struct data*)args;
+    data->cpu_usage = (double *) malloc(data->number_of_procs * sizeof(double));
+    if(data->cpu_usage == NULL) {
+        data->logger_data->message = (char *) malloc(100 * sizeof(char));
+        data->logger_data->message = "malloc error";
+        data->logger_data->flag = 1;
+        return;
+    }
 
+    while(data->exit) {
+        while (data->test_flag != 1) {
+            sleep(1);
+        }
+        for (int i = 0; i < data->number_of_procs; i++) {
+            data->cpu_usage[i] = calculate_load(data->stats_array + i, data->stats_array + i + data->number_of_procs);
+        }
+        data->test_flag = 2;
+    }
 }
 
 //printer
@@ -67,7 +80,6 @@ void watchdog(){
 
 
 }
-
 
 void logger(void *args){
     struct data* data = (struct data*)args;
@@ -87,7 +99,24 @@ void logger(void *args){
 
 }
 
+double calculate_load(struct cpustat *prev, struct cpustat *cur)
+{
+    unsigned long idle_prev = (prev->t_idle) + (prev->t_iowait);
+    unsigned long idle_cur = (cur->t_idle) + (cur->t_iowait);
 
+    unsigned long nidle_prev = (prev->t_user) + (prev->t_nice) + (prev->t_system) + (prev->t_irq) + (prev->t_softirq);
+    unsigned long nidle_cur = (cur->t_user) + (cur->t_nice) + (cur->t_system) + (cur->t_irq) + (cur->t_softirq);
+
+    unsigned long total_prev = idle_prev + nidle_prev;
+    unsigned long total_cur = idle_cur + nidle_cur;
+
+    double totald = (double) total_cur - (double) total_prev;
+    double idled = (double) idle_cur - (double) idle_prev;
+
+    double cpu_perc = (1000 * (totald - idled) / totald + 1) / 10;
+
+    return cpu_perc;
+}
 
 int initialize(struct data* data){
 
@@ -150,21 +179,25 @@ void clear_data(struct data* data){
 int read_data(FILE *fp, struct data* data, int offset ) {
     int eerro;
     int i = 0;
-    int test;
     struct cpustat *cpu_stat_array = data->stats_array;
     do {
         if ((*(cpu_stat_array + i + offset)).core_number == NULL) {
             (*(cpu_stat_array + i + offset)).core_number = (char *) malloc(10 * sizeof(char));
         }
         char *numbers = (char *) malloc(200 * sizeof(char));
-        eerro = fscanf(fp, "%s %s\n", (*(cpu_stat_array + i + offset)).core_number, numbers);
-        if (eerro != 2) {
+        eerro = fscanf(fp, "%s ", (*(cpu_stat_array + i + offset)).core_number);
+        int j = 0;
+        do{
+            numbers[j]= (char)fgetc(fp);
+            j++;
+        } while (numbers[j-1] != '\n');
+        if (eerro != 1) {
             data->logger_data->message = "file read error";
             data->logger_data->flag = 1;
             return 1;
         }
         char *ptr;
-        ((*(cpu_stat_array + i + offset)).t_user) = strtol(numbers, &ptr, 10);
+        ((*(cpu_stat_array + i + offset)).t_user) = strtol((const char *) numbers, &ptr, 10);
         ((*(cpu_stat_array + i + offset)).t_nice) = strtol(ptr, &ptr, 10);
         ((*(cpu_stat_array + i + offset)).t_system) = strtol(ptr, &ptr, 10);
         ((*(cpu_stat_array + i + offset)).t_idle) = strtol(ptr, &ptr, 10);
@@ -172,10 +205,6 @@ int read_data(FILE *fp, struct data* data, int offset ) {
         ((*(cpu_stat_array + i + offset)).t_irq) = strtol(ptr, &ptr, 10);
         ((*(cpu_stat_array + i + offset)).t_softirq) = strtol(ptr, &ptr, 10);
 
-        test = fgetc(fp);
-        while (test != '\n') {
-            test = fgetc(fp);
-        }
         i++;
     } while (i < data->number_of_procs);
     return 0;
