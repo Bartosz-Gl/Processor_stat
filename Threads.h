@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdbool.h>
+#include <signal.h>
 
 #ifndef PROCESSOR_STAT_THREADS_H
 #define PROCESSOR_STAT_THREADS_H

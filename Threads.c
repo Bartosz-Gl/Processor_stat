@@ -274,3 +274,5 @@ int read_data(FILE *fp, struct data* data, int offset ) {
     } while (i < data->number_of_procs);
     return 0;
 }
+
+
