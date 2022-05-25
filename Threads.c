@@ -247,7 +247,6 @@ int read_data(FILE *fp, struct data* data, int offset ) {
     int i = 0;
     struct cpustat *cpu_stat_array = data->stats_array;
     do {
-        data->stats_array->offset = offset+i;
         char *numbers = (char *) malloc(200 * sizeof(char));
         eerro = fscanf(fp, "%s ", (*(cpu_stat_array + i + offset)).core_number);
         int j = 0;
