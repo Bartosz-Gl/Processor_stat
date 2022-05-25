@@ -4,7 +4,7 @@
 #include "Threads.h"
 
 
-pthread_mutex_t lock_data;
+
 //reader
 void *reader(void* args){
     struct data* data = (struct data*) args;
@@ -13,7 +13,8 @@ void *reader(void* args){
         while (data->test_flag!=0) ;
         FILE *fp = fopen(data->path, "r");
         if (fp == NULL) {
-            data->logger_data->message = "file open error";
+            pthread_mutex_lock(&lock_logger);
+            memcpy(data->logger_data->message, "Error opening file", strlen("Error opening file"));
             data->logger_data->flag = 1;
             return 0;
         }
@@ -24,7 +25,8 @@ void *reader(void* args){
         }
         pthread_mutex_lock(&lock_data);
         if(read_data(fp,data,0)!=0){
-            data->logger_data->message = "read error";
+            pthread_mutex_lock(&lock_logger);
+            memcpy(data->logger_data->message, "Error reading file", strlen("Error reading file"));
             data->logger_data->flag = 1;
             pthread_mutex_unlock(&lock_data);
             return 0;
@@ -33,12 +35,12 @@ void *reader(void* args){
 
         sleep(1);
 
-        //printf("przeszo\n");
         fclose(fp);
 
         FILE *fp2 = fopen("/proc/stat", "r");
         if (fp2 == NULL) {
-            data->logger_data->message = "file open error";
+            pthread_mutex_lock(&lock_logger);
+            memcpy(data->logger_data->message, "Error opening file", strlen("Error opening file"));
             data->logger_data->flag = 1;
             return 0;
         }
@@ -48,7 +50,8 @@ void *reader(void* args){
         }
         pthread_mutex_lock(&lock_data);
         if(read_data(fp2,data, data->number_of_procs)!=0){
-            data->logger_data->message = "read error";
+            pthread_mutex_lock(&lock_logger);
+            memcpy(data->logger_data->message, "Error reading file", strlen("Error reading file"));
             data->logger_data->flag = 1;
             pthread_mutex_unlock(&lock_data);
             return 0;
@@ -65,8 +68,8 @@ void *analyzer(void* args){
     struct data* data = (struct data*)args;
     data->cpu_usage = (double *) malloc(data->number_of_procs * sizeof(double));
     if(data->cpu_usage == NULL) {
-        data->logger_data->message = (char *) malloc(100 * sizeof(char));
-        data->logger_data->message = "malloc error";
+        pthread_mutex_lock(&lock_logger);
+        memcpy(data->logger_data->message, "Error allocating memory", strlen("Error allocating memory"));
         data->logger_data->flag = 1;
         return 0;
     }
@@ -93,11 +96,11 @@ void *printer(void* args) {
         sleep(1);
         pthread_mutex_lock(&lock_data);
         for (int i = 0; i < data->number_of_procs; i++) {
-            printf("%s - %f\n", data->stats_array[i].core_number, data->cpu_usage[i]);
+            printf("Usage of %s - %f\n", data->stats_array[i].core_number, data->cpu_usage[i]);
         }
         pthread_mutex_unlock(&lock_data);
-        data->logger_data->message = (char *) malloc(100 * sizeof(char));
-        data->logger_data->message = "printing";
+        pthread_mutex_lock(&lock_logger);
+        memcpy(data->logger_data->message, "Data printed\n", strlen("Data printed\n"));
         data->logger_data->flag = 1;
         data->test_flag = 0;
     }
@@ -124,6 +127,7 @@ void *logger(void *args){
 
         fprintf(fp, "%s\n", data->logger_data->message);
         data->logger_data->flag = 0;
+        pthread_mutex_unlock(&lock_logger);
     }
     fclose(fp);
     return 0;
@@ -164,45 +168,20 @@ int initialize(struct data* data){
         return -1;
     }
     data->stats_array = cpu_stat_array;
-    data->path = (char*)malloc(sizeof(char) * strlen("/proc/stat"));
-    if(data->path == NULL) {
-        printf("malloc error\n");
-        return -1;
-    }
-    data->path = "/proc/stat";
+    memcpy(data->path, "/proc/stat", strlen("/proc/stat"));
     data->test_flag = 0;
     data->exit = 1;
-    data->logger_data = (struct logger_data*)malloc(sizeof(struct logger_data));
-    if(data->logger_data == NULL) {
-        printf("malloc error\n");
-        return -1;
-    }
     data->logger_data->flag = 0;
-    data->logger_data->path = (char*)malloc(sizeof(char) * strlen("/home/jojojej/Desktop/log.txt"));
-    if(data->logger_data->path == NULL) {
-        printf("malloc error\n");
-        return -1;
-    }
-    data->logger_data->message = (char *) malloc(100 * sizeof(char));
-    if(data->logger_data->message == NULL) {
-        printf("malloc error\n");
-        return -1;
-    }
-    data->logger_data->path = "/home/jojojej/Desktop/log.txt";
+    memcpy(data->logger_data->path, "/home/jojojej/Desktop/log.txt", strlen("/home/jojojej/Desktop/log.txt"));
+    memcpy(data->logger_data->message, "Logger initialized", strlen("Logger initialized"));
+    data->logger_data->flag = 1;
     return 0;
 }
 
 void clear_data(struct data* data){
-    for (int i = 0; i < data->number_of_procs; i++) {
-        free(data->stats_array[i].core_number);
-    }
-    free(data->stats_array->core_number);
-    free(data->logger_data->message);
-    free(data->stats_array);
-    free(data->path);
+
     free(data->cpu_usage);
-    free(data->logger_data->path);
-    free(data->logger_data);
+    free(data->stats_array);
     free(data);
 }
 
@@ -212,9 +191,6 @@ int read_data(FILE *fp, struct data* data, int offset ) {
     struct cpustat *cpu_stat_array = data->stats_array;
     do {
         data->stats_array->offset = offset+i;
-        if ((*(cpu_stat_array + i + offset)).core_number == NULL) {
-            (*(cpu_stat_array + i + offset)).core_number = (char *) malloc(10 * sizeof(char));
-        }
         char *numbers = (char *) malloc(200 * sizeof(char));
         eerro = fscanf(fp, "%s ", (*(cpu_stat_array + i + offset)).core_number);
         int j = 0;
@@ -223,7 +199,8 @@ int read_data(FILE *fp, struct data* data, int offset ) {
             j++;
         } while (numbers[j-1] != '\n');
         if (eerro != 1) {
-            data->logger_data->message = "file read error";
+            while(data->logger_data->flag );
+            memcpy(data->logger_data->message, "Error reading data", strlen("Error reading data"));
             data->logger_data->flag = 1;
             return 1;
         }
@@ -235,7 +212,7 @@ int read_data(FILE *fp, struct data* data, int offset ) {
         ((*(cpu_stat_array + i + offset)).t_iowait) = strtol(ptr, &ptr, 10);
         ((*(cpu_stat_array + i + offset)).t_irq) = strtol(ptr, &ptr, 10);
         ((*(cpu_stat_array + i + offset)).t_softirq) = strtol(ptr, &ptr, 10);
-
+        free(numbers);
         i++;
     } while (i < data->number_of_procs);
     return 0;

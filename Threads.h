@@ -9,12 +9,23 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdbool.h>
 
 #ifndef PROCESSOR_STAT_THREADS_H
 #define PROCESSOR_STAT_THREADS_H
 
+pthread_mutex_t lock_data, lock_logger;
+
+struct watchdog_flags{
+    bool reader_flag;
+    bool analyzer_flag;
+    bool printer_flag;
+    bool logger_flag;
+
+};
+
 struct cpustat {
-    char *core_number;
+    char core_number[10];
     unsigned long t_user;
     unsigned long t_nice;
     unsigned long t_system;
@@ -26,16 +37,17 @@ struct cpustat {
 };
 
 struct logger_data {
-    char *message;
+    char message[100];
     int flag;
-    char *path;
+    char path[35];
 };
 
 struct data {
     struct cpustat* stats_array;
-    struct logger_data* logger_data;
+    struct logger_data logger_data[1];
+    struct watchdog_flags watchdog_flags[1];
     int number_of_procs;
-    char* path;
+    char path[15];
     int test_flag;
     double* cpu_usage;
     int exit;
