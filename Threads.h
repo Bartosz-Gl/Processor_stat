@@ -42,19 +42,19 @@ struct data {
 };
 
 //reader
-void reader(void* args);
+void *reader(void* args);
 
 //analyzer
-void analyzer(void* args);
+void *analyzer(void* args);
 
 //printer
-void printer(void* args);
+void *printer(void* args);
 
 //watchdog
-void watchdog();
+void *watchdog();
 
 //logger
-void logger(void* args);
+void *logger(void* args);
 
 
 double calculate_load(struct cpustat *prev, struct cpustat *cur);

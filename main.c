@@ -13,15 +13,15 @@ int main() {
         return -1;
     }
 
-    pthread_create(&tid_reader, NULL, (void *(*)(void *)) &reader, (void*)data);
+    pthread_create(&tid_reader, NULL, &reader, (void*)data);
     printf("start analyzer\n");
-    pthread_create(&tid_analyzer, NULL, (void *(*)(void *)) &analyzer, (void*) data);
+    pthread_create(&tid_analyzer, NULL, &analyzer, (void*) data);
     printf("start analyzer2\n");
-    pthread_create(&tid_printer, NULL, (void *(*)(void *)) &printer, (void*) data);
+    pthread_create(&tid_printer, NULL,  &printer, (void*) data);
     printf("start analyzer3\n");
-    pthread_create(&tid_watchdog, NULL, (void *(*)(void *)) &watchdog, (void*) data);
+    pthread_create(&tid_watchdog, NULL,  &watchdog, (void*) data);
     printf("start analyzer4\n");
-    pthread_create(&tid_logger, NULL, (void *(*)(void *)) &logger, (void*) data);
+    pthread_create(&tid_logger, NULL,  &logger, (void*) data);
 
     if(getchar() == 'q') {
         data->exit = 0;

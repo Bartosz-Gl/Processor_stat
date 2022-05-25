@@ -4,7 +4,7 @@
 #include "Threads.h"
 
 //reader
-void reader(void* args){
+void *reader(void* args){
     struct data* data = (struct data*) args;
 
     while(data->exit) {
@@ -13,7 +13,7 @@ void reader(void* args){
         if (fp == NULL) {
             data->logger_data->message = "file open error";
             data->logger_data->flag = 1;
-            return;
+            return 0;
         }
         int skip = fgetc(fp);
 
@@ -23,7 +23,7 @@ void reader(void* args){
         if(read_data(fp,data,0)!=0){
             data->logger_data->message = "read error";
             data->logger_data->flag = 1;
-            return;
+            return 0;
         }
 
         sleep(1);
@@ -35,7 +35,7 @@ void reader(void* args){
         if (fp2 == NULL) {
             data->logger_data->message = "file open error";
             data->logger_data->flag = 1;
-            return;
+            return 0;
         }
         int skip2 = fgetc(fp2);
         while (skip2 != '\n') {
@@ -45,22 +45,23 @@ void reader(void* args){
         if(read_data(fp2,data, data->number_of_procs)!=0){
             data->logger_data->message = "read error";
             data->logger_data->flag = 1;
-            return;
+            return 0;
         }
         data->test_flag = 1;
         fclose(fp2);
     }
+    return 0;
 }
 
 //analyzer
-void analyzer(void* args){
+void *analyzer(void* args){
     struct data* data = (struct data*)args;
     data->cpu_usage = (double *) malloc(data->number_of_procs * sizeof(double));
     if(data->cpu_usage == NULL) {
         data->logger_data->message = (char *) malloc(100 * sizeof(char));
         data->logger_data->message = "malloc error";
         data->logger_data->flag = 1;
-        return;
+        return 0;
     }
 
     while(data->exit) {
@@ -72,10 +73,11 @@ void analyzer(void* args){
         }
         data->test_flag = 2;
     }
+    return 0;
 }
 
 //printer
-void printer(void* args) {
+void *printer(void* args) {
     //print data->data_processed
     struct data *data = (struct data *) args;
     while (data->exit) {
@@ -88,31 +90,32 @@ void printer(void* args) {
         data->logger_data->flag = 1;
         data->test_flag = 0;
     }
-
+    return 0;
 }
 
 //watchdog
-void watchdog(){
+void *watchdog(){
 
-
+    return 0;
 }
 
-void logger(void *args){
+void *logger(void *args){
     struct data* data = (struct data*)args;
     FILE *fp = fopen(data->logger_data->path, "a");
+    if (fp == NULL) {
+        printf("file open error for logger\n");
+        return 0;
+    }
     while(data->exit) {
         while(data->logger_data->flag != 1) {
             sleep(1);
         }
-        if (fp == NULL) {
-            printf("file open error for logger\n");
-            return;
-        }
+
         fprintf(fp, "%s\n", data->logger_data->message);
         data->logger_data->flag = 0;
     }
     fclose(fp);
-
+    return 0;
 }
 
 double calculate_load(struct cpustat *prev, struct cpustat *cur)
