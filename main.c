@@ -30,7 +30,7 @@ int main() {
     //printf("start analyzer4\n");
     pthread_create(&tid_logger, NULL,  &logger, (void*) data);
 
-    sleep(5);
+    sleep(50);
     data->exit = 0;
 
     pthread_join(tid_reader, NULL);

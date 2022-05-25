@@ -11,6 +11,8 @@ void *reader(void* args){
 
     while(data->exit) {
         while (data->test_flag!=0) ;
+        if(data->watchdog_flags->reader_flag)
+            data->watchdog_flags->reader_flag=false;
         FILE *fp = fopen(data->path, "r");
         if (fp == NULL) {
             pthread_mutex_lock(&lock_logger);
@@ -75,9 +77,9 @@ void *analyzer(void* args){
     }
 
     while(data->exit) {
-        while (data->test_flag != 1) {
-            sleep(1);
-        }
+        while (data->test_flag != 1);
+        if(data->watchdog_flags->analyzer_flag)
+            data->watchdog_flags->analyzer_flag=false;
         pthread_mutex_lock(&lock_data);
         for (int i = 0; i < data->number_of_procs; i++) {
             data->cpu_usage[i] = calculate_load(data->stats_array + i, data->stats_array + i + data->number_of_procs);
@@ -93,6 +95,8 @@ void *printer(void* args) {
     //print data->data_processed
     struct data *data = (struct data *) args;
     while (data->exit) {
+        if(data->watchdog_flags->printer_flag)
+            data->watchdog_flags->printer_flag=false;
         sleep(1);
         pthread_mutex_lock(&lock_data);
         for (int i = 0; i < data->number_of_procs; i++) {
@@ -108,7 +112,48 @@ void *printer(void* args) {
 }
 
 //watchdog
-void *watchdog(){
+void *watchdog(void* args) {
+    struct data *data = (struct data *) args;
+    sleep(1);
+    while (data->exit) {
+        sleep(1);
+        data->watchdog_flags->analyzer_flag = true;
+        data->watchdog_flags->printer_flag = true;
+        data->watchdog_flags->reader_flag = true;
+        data->watchdog_flags->logger_flag = true;
+        sleep(2);
+        if(data->watchdog_flags->logger_flag && data->exit ){
+            printf("Logger is dead\n");
+            pthread_mutex_unlock(&lock_logger);
+            data->exit = 0;
+            return 0;
+        }
+        if( data->watchdog_flags->reader_flag && data->exit) {
+            pthread_mutex_lock(&lock_logger);
+            printf("Reader is dead\n");
+            memcpy(data->logger_data->message, "Reader is dead\n", strlen("Reader is dead\n"));
+            data->logger_data->flag = 1;
+            data->exit = 0;
+            return 0;
+        }
+        if( data->watchdog_flags->analyzer_flag && data->exit) {
+            pthread_mutex_lock(&lock_logger);
+            printf("Analyzer is dead\n");
+            memcpy(data->logger_data->message, "Analyzer is dead\n", strlen("Analyzer is dead\n"));
+            data->logger_data->flag = 1;
+            data->exit = 0;
+            return 0;
+        }
+        if( data->watchdog_flags->printer_flag && data->exit) {
+            pthread_mutex_lock(&lock_logger);
+            printf("Printer is dead\n");
+            memcpy(data->logger_data->message, "Printer is dead\n", strlen("Printer is dead\n"));
+            data->logger_data->flag = 1;
+            data->exit = 0;
+            return 0;
+        }
+
+    }
 
     return 0;
 }
@@ -120,12 +165,18 @@ void *logger(void *args){
         printf("file open error for logger\n");
         return 0;
     }
-    while(data->exit) {
-        while(data->logger_data->flag != 1) {
+    while(data->exit ) {
+        while(data->logger_data->flag != 1){
             sleep(1);
+            if(data->watchdog_flags->logger_flag)
+                data->watchdog_flags->logger_flag=false;
         }
-
         fprintf(fp, "%s\n", data->logger_data->message);
+        //clear message
+        int message_lenght = (int)strlen(data->logger_data->message);
+        for (int i = 0; i < message_lenght; i++) {
+            data->logger_data->message[i] = '\0';
+        }
         data->logger_data->flag = 0;
         pthread_mutex_unlock(&lock_logger);
     }

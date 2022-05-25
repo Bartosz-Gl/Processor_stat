@@ -63,7 +63,7 @@ void *analyzer(void* args);
 void *printer(void* args);
 
 //watchdog
-void *watchdog();
+void *watchdog(void *args);
 
 //logger
 void *logger(void* args);
