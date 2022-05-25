@@ -8,7 +8,6 @@ volatile sig_atomic_t exit_flag = 1;
 
 void terminate(){
     exit_flag = 0;
-    printf("Terminating...\n");
 }
 
 int main() {
@@ -32,13 +31,9 @@ int main() {
 
 
     pthread_create(&tid_reader, NULL, &reader, (void*)data);
-    //printf("start analyzer\n");
     pthread_create(&tid_analyzer, NULL, &analyzer, (void*) data);
-    //printf("start analyzer2\n");
     pthread_create(&tid_printer, NULL,  &printer, (void*) data);
-    //printf("start analyzer3\n");
     pthread_create(&tid_watchdog, NULL,  &watchdog, (void*) data);
-    //printf("start analyzer4\n");
     pthread_create(&tid_logger, NULL,  &logger, (void*) data);
 
     while (exit_flag) {
