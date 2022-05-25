@@ -3,6 +3,8 @@
 //
 #include "Threads.h"
 
+
+pthread_mutex_t lock_data;
 //reader
 void *reader(void* args){
     struct data* data = (struct data*) args;
@@ -20,11 +22,14 @@ void *reader(void* args){
         while (skip != '\n') {
             skip = fgetc(fp);
         }
+        pthread_mutex_lock(&lock_data);
         if(read_data(fp,data,0)!=0){
             data->logger_data->message = "read error";
             data->logger_data->flag = 1;
+            pthread_mutex_unlock(&lock_data);
             return 0;
         }
+        pthread_mutex_unlock(&lock_data);
 
         sleep(1);
 
@@ -41,12 +46,14 @@ void *reader(void* args){
         while (skip2 != '\n') {
             skip2 = fgetc(fp2);
         }
-
+        pthread_mutex_lock(&lock_data);
         if(read_data(fp2,data, data->number_of_procs)!=0){
             data->logger_data->message = "read error";
             data->logger_data->flag = 1;
+            pthread_mutex_unlock(&lock_data);
             return 0;
         }
+        pthread_mutex_unlock(&lock_data);
         data->test_flag = 1;
         fclose(fp2);
     }
@@ -68,9 +75,11 @@ void *analyzer(void* args){
         while (data->test_flag != 1) {
             sleep(1);
         }
+        pthread_mutex_lock(&lock_data);
         for (int i = 0; i < data->number_of_procs; i++) {
             data->cpu_usage[i] = calculate_load(data->stats_array + i, data->stats_array + i + data->number_of_procs);
         }
+        pthread_mutex_unlock(&lock_data);
         data->test_flag = 2;
     }
     return 0;
@@ -82,9 +91,11 @@ void *printer(void* args) {
     struct data *data = (struct data *) args;
     while (data->exit) {
         sleep(1);
+        pthread_mutex_lock(&lock_data);
         for (int i = 0; i < data->number_of_procs; i++) {
             printf("%s - %f\n", data->stats_array[i].core_number, data->cpu_usage[i]);
         }
+        pthread_mutex_unlock(&lock_data);
         data->logger_data->message = (char *) malloc(100 * sizeof(char));
         data->logger_data->message = "printing";
         data->logger_data->flag = 1;
