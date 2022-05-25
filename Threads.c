@@ -10,7 +10,10 @@ void *reader(void* args){
     struct data* data = (struct data*) args;
 
     while(data->exit) {
-        while (data->test_flag!=0) ;
+        while (data->test_flag!=0){
+            if(data->watchdog_flags->reader_flag)
+                data->watchdog_flags->reader_flag=false;
+        }
         if(data->watchdog_flags->reader_flag)
             data->watchdog_flags->reader_flag=false;
         FILE *fp = fopen(data->path, "r");
@@ -77,7 +80,10 @@ void *analyzer(void* args){
     }
 
     while(data->exit) {
-        while (data->test_flag != 1);
+        while (data->test_flag != 1){
+            if(data->watchdog_flags->analyzer_flag)
+                data->watchdog_flags->analyzer_flag=false;
+        }
         if(data->watchdog_flags->analyzer_flag)
             data->watchdog_flags->analyzer_flag=false;
         pthread_mutex_lock(&lock_data);
@@ -160,7 +166,7 @@ void *watchdog(void* args) {
 
 void *logger(void *args){
     struct data* data = (struct data*)args;
-    FILE *fp = fopen(data->logger_data->path, "a");
+    FILE *fp = fopen(data->logger_data->path, "w");
     if (fp == NULL) {
         printf("file open error for logger\n");
         return 0;
