@@ -8,7 +8,7 @@ void reader(void* args){
     struct data* data = (struct data*) args;
 
     while(data->exit) {
-
+        while (data->test_flag!=0) ;
         FILE *fp = fopen(data->path, "r");
         if (fp == NULL) {
             data->logger_data->message = "file open error";
@@ -27,6 +27,8 @@ void reader(void* args){
         }
 
         sleep(1);
+
+        //printf("przeszo\n");
         fclose(fp);
 
         FILE *fp2 = fopen("/proc/stat", "r");
@@ -47,7 +49,6 @@ void reader(void* args){
         }
         data->test_flag = 1;
         fclose(fp2);
-        sleep(1);
     }
 }
 

@@ -8,6 +8,7 @@
 #include <sys/sysinfo.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 #ifndef PROCESSOR_STAT_THREADS_H
 #define PROCESSOR_STAT_THREADS_H
