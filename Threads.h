@@ -21,6 +21,7 @@ struct cpustat {
     unsigned long t_iowait;
     unsigned long t_irq;
     unsigned long t_softirq;
+    int offset;
 };
 
 struct logger_data {

@@ -6,7 +6,9 @@
 //reader
 void reader(void* args){
     struct data* data = (struct data*) args;
+
     while(data->exit) {
+
         FILE *fp = fopen(data->path, "r");
         if (fp == NULL) {
             data->logger_data->message = "file open error";
@@ -24,7 +26,7 @@ void reader(void* args){
             return;
         }
 
-        sleep(2);
+        sleep(1);
         fclose(fp);
 
         FILE *fp2 = fopen("/proc/stat", "r");
@@ -45,6 +47,7 @@ void reader(void* args){
         }
         data->test_flag = 1;
         fclose(fp2);
+        sleep(1);
     }
 }
 
@@ -71,7 +74,19 @@ void analyzer(void* args){
 }
 
 //printer
-void printer(void* args){
+void printer(void* args) {
+    //print data->data_processed
+    struct data *data = (struct data *) args;
+    while (data->exit) {
+        sleep(1);
+        for (int i = 0; i < data->number_of_procs; i++) {
+            printf("%s - %f\n", data->stats_array[i].core_number, data->cpu_usage[i]);
+        }
+        data->logger_data->message = (char *) malloc(100 * sizeof(char));
+        data->logger_data->message = "printing";
+        data->logger_data->flag = 1;
+        data->test_flag = 0;
+    }
 
 }
 
@@ -181,6 +196,7 @@ int read_data(FILE *fp, struct data* data, int offset ) {
     int i = 0;
     struct cpustat *cpu_stat_array = data->stats_array;
     do {
+        data->stats_array->offset = offset+i;
         if ((*(cpu_stat_array + i + offset)).core_number == NULL) {
             (*(cpu_stat_array + i + offset)).core_number = (char *) malloc(10 * sizeof(char));
         }
