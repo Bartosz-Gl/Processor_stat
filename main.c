@@ -32,7 +32,10 @@ int main() {
 
     sleep(50);
     data->exit = 0;
-
+    if(data->watchdog_flags->logger_flag || data->watchdog_flags->reader_flag || data->watchdog_flags->analyzer_flag || data->watchdog_flags->printer_flag) {
+        printf("Error: at least 1 thread stopped working, program will stop.\nPlease wait for \"end\" message\n");
+        sleep(1);
+    }
     pthread_join(tid_reader, NULL);
     pthread_join(tid_analyzer, NULL);
     pthread_join(tid_printer, NULL);
